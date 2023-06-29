@@ -23,9 +23,13 @@ function run_task {
     gpu_ids=${gpu_ids%?} # remove trailing comma
     echo "$timestamp: Starting task $id with GPU $gpu_ids" >> $log_file
     {
-      CUDA_VISIBLE_DEVICES=$gpu_ids /bin/bash $script_path && echo "Task completed successfully"
-    } > "log/task_${id}_log.txt" 2>&1 &  # Redirect task output to a log file
+      export CUDA_VISIBLE_DEVICES=$gpu_ids
+      nohup /bin/bash $script_path &
+    } >> "log/task_${id}_log.txt" 2>&1 &
     new_pid=$(pgrep -f $script_path | xargs)
+    {
+      wait $new_pid && echo "Task completed successfully"
+    } >> "log/task_${id}_log.txt" 2>&1 &  # Add this task to the background as well
     sed -i "s|^$priority,$id,.*$|$priority,$id,$script_path,$num_gpus,$new_pid|" $queue_file # Update PID in queue file
   fi
 }
@@ -64,7 +68,7 @@ while true; do
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
   available_gpus=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | awk -F ',' '{ if ($1<=300) print $1 }' | wc -l)
   echo "$timestamp: Checking GPU status, Aviable GPUs: $available_gpus" >> $log_file
-  
+
   echo "$timestamp: Checking GPU status, Aviable GPUs: $available_gpus"
 
   # Process tasks in descending order of priority

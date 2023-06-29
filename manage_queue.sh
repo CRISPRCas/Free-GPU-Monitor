@@ -23,9 +23,7 @@ function print_queue {
     elif [ "$pid" == "-3" ]; then
       status="${RED}Failed${NC}"
     else
-      if ps -p $pid > /dev/null; then
-        status="${GREEN}Running${NC}"
-      fi
+      status="${GREEN}Running${NC}"
     fi
 
     echo -e "Priority: $priority, Task ID: $id, Script Path: $script_path, GPUs Required: $num_gpus, PID: $pid, Status: $status"
