@@ -68,19 +68,23 @@ while true; do
   echo "$timestamp: Checking GPU status, Aviable GPUs: $available_gpus"
 
   # Process tasks in descending order of priority
-  sort -t',' -k1rn $queue_file | while read -r task; do
-    num_gpus_required=$(echo $task | cut -d',' -f4)
-    pid=$(echo $task | cut -d',' -f5)
+  if [ ! -f "$queue_file" ] || [ ! -s "$queue_file" ]; then
+    echo "$queue_file does not exist or is empty. Skipping..."
+  else
+    sort -t',' -k1rn $queue_file | while read -r task; do
+      num_gpus_required=$(echo $task | cut -d',' -f4)
+      pid=$(echo $task | cut -d',' -f5)
 
-    update_task_status $task
-    
-    # Only run the task if its PID is -1 (idle)
-    if [ "$pid" == "-1" ] && [ "$available_gpus" -ge "$num_gpus_required" ]; then
-      echo "Start running task $task"
-      run_task $task
-      available_gpus=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | awk -F ',' '{ if ($1<=300) print $1 }' | wc -l)
-    fi
-  done
+      update_task_status $task
+      
+      # Only run the task if its PID is -1 (idle)
+      if [ "$pid" == "-1" ] && [ "$available_gpus" -ge "$num_gpus_required" ]; then
+        echo "Start running task $task"
+        run_task $task
+        available_gpus=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | awk -F ',' '{ if ($1<=300) print $1 }' | wc -l)
+      fi
+    done
+  fi
 
   sleep 30
 done
